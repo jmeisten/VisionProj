@@ -9,7 +9,6 @@ from datetime import datetime
 
 # if using logitech c270 or other yuv format use this for converting to bgr
 # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
 # other wise use this
 # gary = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
