@@ -103,4 +103,3 @@ while cam.isOpened() :
     avgTime = totalTime / len(avgTimeList)
 
     print("average hough calculation time is ",  avgTime)
-c
