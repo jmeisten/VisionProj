@@ -3,6 +3,8 @@ import threading
 import time
 import os
 
+# This could in theory just post the image as a np array and post it to a rest api
+
 class myCam:
 
     def __init__(self):

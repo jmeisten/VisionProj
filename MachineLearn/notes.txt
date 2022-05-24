@@ -1,0 +1,9 @@
+FROM 5/23/22 THIS PORTION OF THE REPO CONTAINS CODE PROBLEMS FROM OREILIES INTRO TO ML USING PYTHON
+
+install:
+    pandas
+    scipy
+    numpy
+    matplotlib
+    IPython
+    scikit-learn
