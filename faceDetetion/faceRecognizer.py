@@ -334,70 +334,15 @@ while True:
         # train the model if t was pressed
         # build the detection blob and put it in the models
         # TODO test with smaller 
-        if keyboard.is_pressed('t'):
-            continue
-            foundRect=None
-            foundNames=[]
-            foundScores=[]
-            globImg=np.empty(2, dtype=int)
-            dirToLoad=input("What folder should I load? Put path in relation to current folder    ")
-            print("f")
-            os.makedirs(trainingPath+dirToLoad)
-            for im in os.listdir(dirToLoad):
-                img = cv2.imread(os.path.join(dirToLoad,im))
-                gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-                frameHeight = img.shape[0]
-                frameWidth = img.shape[1]
-                blob = cv2.dnn.blobFromImage(img, 1.0, (300, 300), [104, 117,   123], False, False)
-                net.setInput(blob)
-                detections = net.forward()
-                os.rename(os.path.join(dirToLoad+img),os.path.join(trainingPath,dirToLoad,img))
-                for i in range(detections.shape[2]):
-                    try:
-                        confidence = detections[0, 0, i, 2]
-                        if confidence > 0.7:
-                            (h,w) = img.shape[:2]
-                            box = detections[0,0, i, 3:7] * np.array ([w,h,w,h])
-                            (startX, startY, endX, endY) = box.astype("int")
-                            r = dlib.rectangle(int(startX), int(startY), int(endX), int(endY))
-                    
-                            faceAligned = fa.align(img, gray, r)
-                            landmark = pose_predictor(faceAligned,dlib.rectangle(0,0,faceAligned.shape[0],faceAligned.shape[1]))
-                            face_descriptor = face_encoder.compute_face_descriptor(faceAligned, landmark, num_jitters=2)
-                            faces.append(face_descriptor)
-                            name.append(str(dir))
-                        
-                    except Exception as e:
-                        print("Something happend on dir ",dir)
-                        print(e)
-            
-            faces = np.array(faces)
-            name = np.array(str(name))
-            faceName=faceDir+'face_repr_'+str(imCount)+'.npy'
-            labelsName=faceDir+'labels_'+str(imCount)+'.npy'
-            saveName = np.array(name)
-            np.save(faceName, faces)
-            np.save(labelsName, saveName)
-
-            # load the arrays. this is redundant if you already have it built
-            faces = np.load(faceName)
-            name = np.load(labelsName)
-
-            tmp = str(name)
-            tmp=tmp[1:-1].split(',');
-
-            for i in range(len(tmp)):
-                tmp[i]=tmp[i].replace("'",'')
-                tmp[i]=tmp[i].replace(" ",'')
-                name=tmp
-
+        
         try:
             if globImg.any():
                 globImg=image
         except:
             globImg=image
-           
-        if (cv2.waitKey(1) == ord('q')):
+        
+        key = cv2.waitKey(1)
+        if (key == 113):
             print("BYE BYE")
             break
         # if decoded then update the frame info 
@@ -425,9 +370,27 @@ while True:
             #     cv2.rectangle(image, (x,y), (x+w, y+h), (255,0,0), 2)
             #     cv2.putText(image, "Detecting Now", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
 
+            F = np.fft.fft2(img)
+            Fshift = np.fft.fftShfit(F)
+
+            M,N = f.shape
+            HPF = np.zeros((M,N), dtype=np.float32)
+            D0 = 10
+            n = 1
+            for u in range(M):
+                for v in range(N):
+                    D = np.sqrt((u-M/2)**2 + (v-N/2)**2)
+                    HPF[u,v]= 1 / ( 1 + (D/D0)**(2*n))
+
+            Gshift = Fshift*HPF #(or HPF)
+            G = np.fft.ifftshift(Gshift) 
+            g = np.abs(np.fft.ifft2(G))
+
+
 
             h = image.shape[0]
             w = image.shape[1]
+            cv2.imshow("High Pass Filter",g)
             cv2.putText(image, foundName, (fx, fy-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
             cv2.rectangle(image, (fx,fy),(fx2,fy2),(255,0,0),2)
             cv2.putText(image, foundName, (fx, fy-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
