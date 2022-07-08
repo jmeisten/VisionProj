@@ -1,0 +1,16 @@
+For training new pieces:
+    Get new piece images:
+        Download and setup ldcad
+        replace samples.lua with this one for LDCAD
+        generate a parts list for a lego set and open the ldr file with ldcad
+        In LDCAD:
+            Session -> Animation ->OpenGL
+            background = #FFFFFF
+            image size 300x300
+    
+    Create new Model:
+        Label all images:
+            Use a image labeling software such as labelimg to add tags to all images (will take a while)
+        Train model
+            https://blog.insightdatascience.com/how-to-train-your-own-yolov3-detector-from-scratch-224d10e55de2
+

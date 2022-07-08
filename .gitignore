@@ -1,2 +1,4 @@
 faceDetection/config/backupfiles/*
 faceDetection/config/lfw/Jacob_Meisten/*
+*.png
+*.jpg
