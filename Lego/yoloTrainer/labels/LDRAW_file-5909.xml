@@ -1,0 +1,26 @@
+<annotation>
+	<folder>LDRAW_file-glExport</folder>
+	<filename>LDRAW_file-5909.png</filename>
+	<path>F:\LDRAW_file-glExport\LDRAW_file-5909.png</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>300</width>
+		<height>300</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>43093</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>124</xmin>
+			<ymin>152</ymin>
+			<xmax>157</xmax>
+			<ymax>168</ymax>
+		</bndbox>
+	</object>
+</annotation>

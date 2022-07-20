@@ -1,0 +1,26 @@
+<annotation>
+	<folder>LDRAW_file-glExport</folder>
+	<filename>LDRAW_file-5824.png</filename>
+	<path>F:\LDRAW_file-glExport\LDRAW_file-5824.png</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>300</width>
+		<height>300</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>18649</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>121</xmin>
+			<ymin>120</ymin>
+			<xmax>181</xmax>
+			<ymax>173</ymax>
+		</bndbox>
+	</object>
+</annotation>
