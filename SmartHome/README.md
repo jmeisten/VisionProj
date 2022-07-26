@@ -10,6 +10,8 @@ Current Goals:
         Face Detection
         Gesture Recogniion
         Machine Learning
+        Motor Control
+        Cad
 
     Track items or people/creatures:
         Object Detection for keys, wallet, cat, people (face detect as well?)
@@ -23,4 +25,4 @@ Current Goals:
 
     ML
         Try to create a system for "learning on fly".
-            If feedback on state found save to xml. Train a model during off hours and reload. (Midnight?)
+            If feedback on state with high probability found save everythings state to xml. Train a model during off hours and reload. (Midnight? Lights out and in bed? Request?)
