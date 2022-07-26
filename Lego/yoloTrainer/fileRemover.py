@@ -12,7 +12,7 @@ for file in os.listdir(path):
     try:
         name = file.split(".")[0]
         type = file.split(".")[1]
-        if ( "xml" in type):
+        if ( "txt" in type):
             xmlNames.append(name)
         elif "py" not in type:
             imgNames.append(file)

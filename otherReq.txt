@@ -1,0 +1,30 @@
+sudo apt-get install -y \
+    libopencv-core-dev \
+    libopencv-highgui-dev \
+    libopencv-calib3d-dev \
+    libopencv-features2d-dev \
+    libopencv-imgproc-dev \
+    libopencv-video-dev
+
+sudo apt-get install mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev
+$ sudo apt-get update
+$ sudo apt-get install build-essential cmake
+$ sudo apt-get install libopenblas-dev liblapack-dev 
+$ sudo apt-get install libx11-dev libgtk-3-dev
+$ sudo apt-get install python python-dev python-pip
+$ sudo apt-get install python3 python3-dev
+# (if you have 3.9 do 3.9-dev)
+sudo apt-get install python3.9-tk
+
+pip install tensorflow-object-detection-api
+
+after installing everything fix the center args for imutils
+change this in imutils/facedetection
+		# compute the center of mass for each eye
+		leftEyeCenter = leftEyePts.mean(axis=0).astype("int")
+		rightEyeCenter = rightEyePts.mean(axis=0).astype("int")
+
+change to this 
+		# compute the center of mass for each eye
+		leftEyeCenter = leftEyePts.mean(axis=0).astype("float")
+		rightEyeCenter = rightEyePts.mean(axis=0).astype("float")

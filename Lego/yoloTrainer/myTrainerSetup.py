@@ -99,53 +99,53 @@ def convert_to_yolo(infoDict):
 
 # convert PASCAL VOC to Yolo v5 style annotatios
 
-annotations = [os.path.join('annotations', x) for x in os.listdir('annotations') if x[-3:] == "xml"]
+# annotations = [os.path.join('annotations', x) for x in os.listdir('annotations') if x[-3:] == "xml"]
 
-# some quick file clean ups
-try:
-    os.remove("classes.txt")
-    os.remove("classesString.txt")
-except Exception as e:
-    print(e)
+# # some quick file clean ups
+# try:
+#     os.remove("classes.txt")
+#     os.remove("classesString.txt")
+# except Exception as e:
+#     print(e)
 
-# Convert and save the annotations
-for ann in tqdm(annotations):
-    infoDict = extract_info_from_xml(ann)
-    convert_to_yolo(infoDict)
-print("Finished grabbing all annotations and converting to txt")
-print("Converting classes file to text array for yaml file")
+# # Convert and save the annotations
+# for ann in tqdm(annotations):
+#     infoDict = extract_info_from_xml(ann)
+#     convert_to_yolo(infoDict)
+# print("Finished grabbing all annotations and converting to txt")
+# print("Converting classes file to text array for yaml file")
 
-file = open('classes.txt','r')
-lines = file.readlines()
-classesString =""
-classesArr =[]
-for line in lines:
-    if len(line.strip()) > 2:
+# file = open('classes.txt','r')
+# lines = file.readlines()
+# classesString =""
+# classesArr =[]
+# for line in lines:
+#     if len(line.strip()) > 2:
 
-        line = line.replace('"',"")
-        line = line.strip()
-        if not line in classesArr:
-            classesArr.append(line)
-            classesString += '"' + line+ '",'
-print("Number of unique classes in annotations for images: {}".format(len(classesArr)))
-classesString = classesString[0:-1]
+#         line = line.replace('"',"")
+#         line = line.strip()
+#         if not line in classesArr:
+#             classesArr.append(line)
+#             classesString += '"' + line+ '",'
+# print("Number of unique classes in annotations for images: {}".format(len(classesArr)))
+# classesString = classesString[0:-1]
 
-try:
-    f = open("classesString.txt","w")
-    f.write(classesString)
-    f.close()
-except Exception as e:
-    print(e)
+# try:
+#     f = open("classesString.txt","w")
+#     f.write(classesString)
+#     f.close()
+# except Exception as e:
+#     print(e)
 
-print("Done")
+# print("Done")
 
-annotations = [os.path.join('annotations', x) for x in os.listdir('annotations') if x[-3:] == "txt"]
+# annotations = [os.path.join('annotations', x) for x in os.listdir('annotations') if x[-3:] == "txt"]
 
 # partion dataset
 
 # read images and annotations
 images = [os.path.join('images', x) for x in os.listdir('images') if x[-3:]=="png"]
-annotations = [os.path.join('annotations', x) for x in os.listdir('annotations') if x[-3:] == "txt"]
+annotations = [os.path.join('labels', x) for x in os.listdir('labels') if x[-3:] == "txt"]
 
 images.sort()
 annotations.sort()

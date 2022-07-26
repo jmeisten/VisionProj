@@ -1,0 +1,8 @@
+train: ./images/train/ 
+val:  ./images/val/
+test: ./images/test/
+
+# number of classes
+nc: 4
+
+names: ["testLine","strip","barcode","smudge"]
