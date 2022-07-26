@@ -59,13 +59,12 @@ def getKitsForPart(partNum):
         
     return retVal
 
-def makeLDRAWFile():
+def makeLDRAWFile(kit="31072-1"):
     LDRAW_File= open("LDRAW_file.ldr","w")
-    parts = getPartsForKit("31072-1")
+    parts = getPartsForKit(kit)
     for piece in parts:
         line = " 1 4 0 0 0 1 0 0 0 1 0 0 0 1 " + str(piece)+'.dat'
         LDRAW_File.write(line)
         LDRAW_File.write("\n")
     LDRAW_File.close()
 
-makeLDRAWFile()
