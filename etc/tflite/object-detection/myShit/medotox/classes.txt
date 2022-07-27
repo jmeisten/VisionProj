@@ -1,0 +1,4 @@
+testLine
+strip
+barcode
+smudge
