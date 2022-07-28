@@ -75,17 +75,15 @@ class Annotator:
 
         return (p[0] > bl[0] and p[0] < tr[0] and p[1] > bl[1] and p[1] < tr[1] )
 
-
-        return False
-
-
     def box_label(self, box, label='', color=(128, 128, 128), txt_color=(255, 255, 255)):
         p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
-
+        center = (p1[0] + (p2[0]-p1[0])/2, p1[1] + (p2[1]-p1[1])/2)
+                            
         tLabel = label.split(" ")[0]
         boxOBJ = {
             "p1":p1,
             "p2":p2,
+            "center":center,
             "class":tLabel
         }
 

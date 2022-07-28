@@ -1,0 +1,1 @@
+This utilizes heavily modified code based off the YOLOv5 team's work for inference, whos work is Licensed with the GNU General Public License v3.0. I have, and will continue to, strip everything not related to detection. My goal is to further strip or move to a better form of inference eventually, this is just a POC.
