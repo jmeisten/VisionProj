@@ -19,7 +19,7 @@ import seaborn as sn
 import torch
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.general import (CONFIG_DIR, FONT, LOGGER, Timeout, check_font, check_requirements, clip_coords,
+from utils.general import (CONFIG_DIR, FONT, LOGGER, Timeout,  check_requirements, clip_coords,
                            increment_path, is_ascii, threaded, try_except, xywh2xyxy, xyxy2xywh)
 from utils.metrics import fitness
 
@@ -49,23 +49,6 @@ class Colors:
 
 colors = Colors()  # create instance for 'from utils.plots import colors'
 
-
-def check_pil_font(font=FONT, size=10):
-    # Return a PIL TrueType Font, downloading to CONFIG_DIR if necessary
-    font = Path(font)
-    font = font if font.exists() else (CONFIG_DIR / font.name)
-    try:
-        return ImageFont.truetype(str(font) if font.exists() else font.name, size)
-    except Exception:  # download if missing
-        try:
-            check_font(font)
-            return ImageFont.truetype(str(font), size)
-        except TypeError:
-            check_requirements('Pillow>=8.4.0')  # known issue https://github.com/ultralytics/yolov5/issues/5374
-        except URLError:  # not online
-            return ImageFont.load_default()
-
-
 class Annotator:
     # YOLOv5 Annotator for train/val mosaics and jpgs and detect/hub inference annotations
     drawnBoxes = []
@@ -80,13 +63,7 @@ class Annotator:
         assert im.data.contiguous, 'Image not contiguous. Apply np.ascontiguousarray(im) to Annotator() input images.'
         non_ascii = not is_ascii(example)  # non-latin labels, i.e. asian, arabic, cyrillic
         self.pil = pil or non_ascii
-        if self.pil:  # use PIL
-            self.im = im if isinstance(im, Image.Image) else Image.fromarray(im)
-            self.draw = ImageDraw.Draw(self.im)
-            self.font = check_pil_font(font='Arial.Unicode.ttf' if non_ascii else font,
-                                       size=font_size or max(round(sum(self.im.size) / 2 * 0.035), 12))
-        else:  # use cv2
-            self.im = im
+        self.im = im
         self.lw = line_width or max(round(sum(im.shape) / 2 * 0.003), 2)  # line width
 
     def pointInBox(self, p, box):
@@ -121,29 +98,29 @@ class Annotator:
         
         points = [tl,tr,br,bl]
 
-        
-        for box in self.drawnBoxes:
-            c = box["class"]
-            if c == tLabel:
-                # Check if box will be inside another box of same class
-                for point in points:
-                    if self.pointInBox(point,box):
-                        insideBox = True
+        if False:
+            for box in self.drawnBoxes:
+                c = box["class"]
+                if c == tLabel:
+                    # Check if box will be inside another box of same class
+                    for point in points:
+                        if self.pointInBox(point,box):
+                            insideBox = True
 
-                btr = (box["p1"][0], box["p1"][1])
-                bbl = (box["p1"][0], box["p2"][1])
-                btl = (box["p2"][0], box["p1"][1])
-                bbr = (box["p1"][0], box["p2"][1])
-                boxPoints = [btl,btr,bbr,bbl]
-                # Check if box will engulf another box of same class
-                for point in boxPoints:
-                    if self.pointInBox(point,boxOBJ):
-                        surroundingBox = True
+                    btr = (box["p1"][0], box["p1"][1])
+                    bbl = (box["p1"][0], box["p2"][1])
+                    btl = (box["p2"][0], box["p1"][1])
+                    bbr = (box["p1"][0], box["p2"][1])
+                    boxPoints = [btl,btr,bbr,bbl]
+                    # Check if box will engulf another box of same class
+                    for point in boxPoints:
+                        if self.pointInBox(point,boxOBJ):
+                            surroundingBox = True
 
         if insideBox or surroundingBox:
             print("Current box will utilize the same space as another. Fuck that box")
 
-        print("Boxy boxy: {} {} {}".format(label,p1,p2))
+        # print("Boxy boxy: {} {} {}".format(label,p1,p2))
         cv2.rectangle(self.im, p1, p2, color, thickness=self.lw, lineType=cv2.LINE_AA)
         self.drawnBoxes.append(boxOBJ)
         if label:

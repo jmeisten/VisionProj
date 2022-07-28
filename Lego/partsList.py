@@ -1,5 +1,7 @@
 import requests
 import json
+import cv2
+import tensorflow as tf
 
 urlBase = "https://rebrickable.com/api/v3/lego/"
 
@@ -68,3 +70,26 @@ def makeLDRAWFile(kit="31072-1"):
         LDRAW_File.write("\n")
     LDRAW_File.close()
 
+
+cap = cv2.VideoCapture(0)
+interpreter = tf.lite.Interpreter(model_path="./yolo/models/31072-1.tflite")
+interpreter.allocate_tensors()
+inputDetails = interpreter.get_input_details()
+outputDetails = interpreter.get_output_details()
+
+while True:
+    ret, img = cap.read()
+    
+    if not ret:
+        continue
+    imgRGB = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+    imgRGB = imgRGB.resize((640,640))
+    imgRGB = imgRGB.reshape(1,imgRGB.shape[0],imgRGB.shape[1],3)
+    print(inputDetails)
+    interpreter.set_tensor(float(inputDetails[0]['index']),imgRGB)
+    interpreter.invoke()
+    detectedBoxes = interpreter.get_tensor(outputDetails[0]['index'])[0]
+    detectedClasses = interpreter.get_tensor(outputDetails[0]['index'])[0]
+    detectedCT = interpreter.get_tensor(outputDetails[0]['index'])[0]
+    
+    print("\n{} \n{} \n{}\n".format(detectedBoxes,detectedClasses,detectedCT))

@@ -47,3 +47,4 @@ dlib==19.24.0
 tk==0.1.0
 keyboard==0.13.5
 tensorflow==2.9.1
+smbus==1.1.post2

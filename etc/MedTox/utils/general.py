@@ -144,20 +144,6 @@ class Timeout(contextlib.ContextDecorator):
             if self.suppress and exc_type is TimeoutError:  # Suppress TimeoutError
                 return True
 
-
-class WorkingDirectory(contextlib.ContextDecorator):
-    # Usage: @WorkingDirectory(dir) decorator or 'with WorkingDirectory(dir):' context manager
-    def __init__(self, new_dir):
-        self.dir = new_dir  # new dir
-        self.cwd = Path.cwd().resolve()  # current dir
-
-    def __enter__(self):
-        os.chdir(self.dir)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        os.chdir(self.cwd)
-
-
 def try_except(func):
     # try-except function. Usage: @try_except decorator
     def handler(*args, **kwargs):
@@ -307,28 +293,6 @@ def git_describe(path=ROOT):  # path must be a directory
     except Exception:
         return ''
 
-
-@try_except
-@WorkingDirectory(ROOT)
-def check_git_status():
-    # Recommend 'git pull' if code is out of date
-    msg = ', for updates see https://github.com/ultralytics/yolov5'
-    s = colorstr('github: ')  # string
-    assert Path('.git').exists(), s + 'skipping check (not a git repository)' + msg
-    assert not is_docker(), s + 'skipping check (Docker image)' + msg
-    assert check_online(), s + 'skipping check (offline)' + msg
-
-    cmd = 'git fetch && git config --get remote.origin.url'
-    url = check_output(cmd, shell=True, timeout=5).decode().strip().rstrip('.git')  # git fetch
-    branch = check_output('git rev-parse --abbrev-ref HEAD', shell=True).decode().strip()  # checked out
-    n = int(check_output(f'git rev-list {branch}..origin/master --count', shell=True))  # commits behind
-    if n > 0:
-        s += f"⚠️ YOLOv5 is out of date by {n} commit{'s' * (n > 1)}. Use `git pull` or `git clone {url}` to update."
-    else:
-        s += f'up to date with {url} ✅'
-    LOGGER.info(emojis(s))  # emoji-safe
-
-
 def check_python(minimum='3.7.0'):
     # Check current python version vs. required python version
     check_version(platform.python_version(), minimum, name='Python ', hard=True)
@@ -421,186 +385,6 @@ def check_suffix(file='yolov5s.pt', suffix=('.pt',), msg=''):
                 assert s in suffix, f"{msg}{f} acceptable suffix is {suffix}"
 
 
-def check_yaml(file, suffix=('.yaml', '.yml')):
-    # Search/download YAML file (if necessary) and return path, checking suffix
-    return check_file(file, suffix)
-
-
-def check_file(file, suffix=''):
-    # Search/download file (if necessary) and return path
-    check_suffix(file, suffix)  # optional
-    file = str(file)  # convert to str()
-    if Path(file).is_file() or not file:  # exists
-        return file
-    elif file.startswith(('http:/', 'https:/')):  # download
-        url = file  # warning: Pathlib turns :// -> :/
-        file = Path(urllib.parse.unquote(file).split('?')[0]).name  # '%2F' to '/', split https://url.com/file.txt?auth
-        if Path(file).is_file():
-            LOGGER.info(f'Found {url} locally at {file}')  # file already exists
-        else:
-            LOGGER.info(f'Downloading {url} to {file}...')
-            torch.hub.download_url_to_file(url, file)
-            assert Path(file).exists() and Path(file).stat().st_size > 0, f'File download failed: {url}'  # check
-        return file
-    else:  # search
-        files = []
-        for d in 'data', 'models', 'utils':  # search directories
-            files.extend(glob.glob(str(ROOT / d / '**' / file), recursive=True))  # find file
-        assert len(files), f'File not found: {file}'  # assert file was found
-        assert len(files) == 1, f"Multiple files match '{file}', specify exact path: {files}"  # assert unique
-        return files[0]  # return file
-
-
-def check_font(font=FONT, progress=False):
-    # Download font to CONFIG_DIR if necessary
-    font = Path(font)
-    file = CONFIG_DIR / font.name
-    if not font.exists() and not file.exists():
-        url = "https://ultralytics.com/assets/" + font.name
-        LOGGER.info(f'Downloading {url} to {file}...')
-        torch.hub.download_url_to_file(url, str(file), progress=progress)
-
-
-def check_dataset(data, autodownload=True):
-    # Download, check and/or unzip dataset if not found locally
-
-    # Download (optional)
-    extract_dir = ''
-    if isinstance(data, (str, Path)) and str(data).endswith('.zip'):  # i.e. gs://bucket/dir/coco128.zip
-        download(data, dir=DATASETS_DIR, unzip=True, delete=False, curl=False, threads=1)
-        data = next((DATASETS_DIR / Path(data).stem).rglob('*.yaml'))
-        extract_dir, autodownload = data.parent, False
-
-    # Read yaml (optional)
-    if isinstance(data, (str, Path)):
-        with open(data, errors='ignore') as f:
-            data = yaml.safe_load(f)  # dictionary
-
-    # Checks
-    for k in 'train', 'val', 'nc':
-        assert k in data, emojis(f"data.yaml '{k}:' field missing ❌")
-    if 'names' not in data:
-        LOGGER.warning(emojis("data.yaml 'names:' field missing ⚠️, assigning default names 'class0', 'class1', etc."))
-        data['names'] = [f'class{i}' for i in range(data['nc'])]  # default names
-
-    # Resolve paths
-    path = Path(extract_dir or data.get('path') or '')  # optional 'path' default to '.'
-    if not path.is_absolute():
-        path = (ROOT / path).resolve()
-    for k in 'train', 'val', 'test':
-        if data.get(k):  # prepend path
-            data[k] = str(path / data[k]) if isinstance(data[k], str) else [str(path / x) for x in data[k]]
-
-    # Parse yaml
-    train, val, test, s = (data.get(x) for x in ('train', 'val', 'test', 'download'))
-    if val:
-        val = [Path(x).resolve() for x in (val if isinstance(val, list) else [val])]  # val path
-        if not all(x.exists() for x in val):
-            LOGGER.info(emojis('\nDataset not found ⚠️, missing paths %s' % [str(x) for x in val if not x.exists()]))
-            if not s or not autodownload:
-                raise Exception(emojis('Dataset not found ❌'))
-            t = time.time()
-            root = path.parent if 'path' in data else '..'  # unzip directory i.e. '../'
-            if s.startswith('http') and s.endswith('.zip'):  # URL
-                f = Path(s).name  # filename
-                LOGGER.info(f'Downloading {s} to {f}...')
-                torch.hub.download_url_to_file(s, f)
-                Path(root).mkdir(parents=True, exist_ok=True)  # create root
-                ZipFile(f).extractall(path=root)  # unzip
-                Path(f).unlink()  # remove zip
-                r = None  # success
-            elif s.startswith('bash '):  # bash script
-                LOGGER.info(f'Running {s} ...')
-                r = os.system(s)
-            else:  # python script
-                r = exec(s, {'yaml': data})  # return None
-            dt = f'({round(time.time() - t, 1)}s)'
-            s = f"success ✅ {dt}, saved to {colorstr('bold', root)}" if r in (0, None) else f"failure {dt} ❌"
-            LOGGER.info(emojis(f"Dataset download {s}"))
-    check_font('Arial.ttf' if is_ascii(data['names']) else 'Arial.Unicode.ttf', progress=True)  # download fonts
-    return data  # dictionary
-
-
-def check_amp(model):
-    # Check PyTorch Automatic Mixed Precision (AMP) functionality. Return True on correct operation
-    from models.common import AutoShape, DetectMultiBackend
-
-    def amp_allclose(model, im):
-        # All close FP32 vs AMP results
-        m = AutoShape(model, verbose=False)  # model
-        a = m(im).xywhn[0]  # FP32 inference
-        m.amp = True
-        b = m(im).xywhn[0]  # AMP inference
-        return a.shape == b.shape and torch.allclose(a, b, atol=0.1)  # close to 10% absolute tolerance
-
-    prefix = colorstr('AMP: ')
-    device = next(model.parameters()).device  # get model device
-    if device.type == 'cpu':
-        return False  # AMP disabled on CPU
-    f = ROOT / 'data' / 'images' / 'bus.jpg'  # image to check
-    im = f if f.exists() else 'https://ultralytics.com/images/bus.jpg' if check_online() else np.ones((640, 640, 3))
-    try:
-        assert amp_allclose(model, im) or amp_allclose(DetectMultiBackend('yolov5n.pt', device), im)
-        LOGGER.info(emojis(f'{prefix}checks passed ✅'))
-        return True
-    except Exception:
-        help_url = 'https://github.com/ultralytics/yolov5/issues/7908'
-        LOGGER.warning(emojis(f'{prefix}checks failed ❌, disabling Automatic Mixed Precision. See {help_url}'))
-        return False
-
-
-def url2file(url):
-    # Convert URL to filename, i.e. https://url.com/file.txt?auth -> file.txt
-    url = str(Path(url)).replace(':/', '://')  # Pathlib turns :// -> :/
-    return Path(urllib.parse.unquote(url)).name.split('?')[0]  # '%2F' to '/', split https://url.com/file.txt?auth
-
-
-def download(url, dir='.', unzip=True, delete=True, curl=False, threads=1, retry=3):
-    # Multi-threaded file download and unzip function, used in data.yaml for autodownload
-    def download_one(url, dir):
-        # Download 1 file
-        success = True
-        f = dir / Path(url).name  # filename
-        if Path(url).is_file():  # exists in current path
-            Path(url).rename(f)  # move to dir
-        elif not f.exists():
-            LOGGER.info(f'Downloading {url} to {f}...')
-            for i in range(retry + 1):
-                if curl:
-                    s = 'sS' if threads > 1 else ''  # silent
-                    r = os.system(f'curl -{s}L "{url}" -o "{f}" --retry 9 -C -')  # curl download with retry, continue
-                    success = r == 0
-                else:
-                    torch.hub.download_url_to_file(url, f, progress=threads == 1)  # torch download
-                    success = f.is_file()
-                if success:
-                    break
-                elif i < retry:
-                    LOGGER.warning(f'Download failure, retrying {i + 1}/{retry} {url}...')
-                else:
-                    LOGGER.warning(f'Failed to download {url}...')
-
-        if unzip and success and f.suffix in ('.zip', '.gz'):
-            LOGGER.info(f'Unzipping {f}...')
-            if f.suffix == '.zip':
-                ZipFile(f).extractall(path=dir)  # unzip
-            elif f.suffix == '.gz':
-                os.system(f'tar xfz {f} --directory {f.parent}')  # unzip
-            if delete:
-                f.unlink()  # remove zip
-
-    dir = Path(dir)
-    dir.mkdir(parents=True, exist_ok=True)  # make directory
-    if threads > 1:
-        pool = ThreadPool(threads)
-        pool.imap(lambda x: download_one(*x), zip(url, repeat(dir)))  # multi-threaded
-        pool.close()
-        pool.join()
-    else:
-        for u in [url] if isinstance(url, (str, Path)) else url:
-            download_one(u, dir)
-
-
 def make_divisible(x, divisor):
     # Returns nearest x divisible by divisor
     if isinstance(divisor, torch.Tensor):
@@ -642,44 +426,6 @@ def colorstr(*input):
         'bold': '\033[1m',
         'underline': '\033[4m'}
     return ''.join(colors[x] for x in args) + f'{string}' + colors['end']
-
-
-def labels_to_class_weights(labels, nc=80):
-    # Get class weights (inverse frequency) from training labels
-    if labels[0] is None:  # no labels loaded
-        return torch.Tensor()
-
-    labels = np.concatenate(labels, 0)  # labels.shape = (866643, 5) for COCO
-    classes = labels[:, 0].astype(int)  # labels = [class xywh]
-    weights = np.bincount(classes, minlength=nc)  # occurrences per class
-
-    # Prepend gridpoint count (for uCE training)
-    # gpi = ((320 / 32 * np.array([1, 2, 4])) ** 2 * 3).sum()  # gridpoints per image
-    # weights = np.hstack([gpi * len(labels)  - weights.sum() * 9, weights * 9]) ** 0.5  # prepend gridpoints to start
-
-    weights[weights == 0] = 1  # replace empty bins with 1
-    weights = 1 / weights  # number of targets per class
-    weights /= weights.sum()  # normalize
-    return torch.from_numpy(weights).float()
-
-
-def labels_to_image_weights(labels, nc=80, class_weights=np.ones(80)):
-    # Produces image weights based on class_weights and image contents
-    # Usage: index = random.choices(range(n), weights=image_weights, k=1)  # weighted image sample
-    class_counts = np.array([np.bincount(x[:, 0].astype(int), minlength=nc) for x in labels])
-    return (class_weights.reshape(1, nc) * class_counts).sum(1)
-
-
-def coco80_to_coco91_class():  # converts 80-index (val2014) to 91-index (paper)
-    # https://tech.amikelive.com/node-718/what-object-categories-labels-are-in-coco-dataset/
-    # a = np.loadtxt('data/coco.names', dtype='str', delimiter='\n')
-    # b = np.loadtxt('data/coco_paper.names', dtype='str', delimiter='\n')
-    # x1 = [list(a[i] == b).index(True) + 1 for i in range(80)]  # darknet to coco
-    # x2 = [list(b[i] == a).index(True) if any(b[i] == a) else None for i in range(91)]  # coco to darknet
-    return [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34,
-        35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
-        64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
 
 
 def xyxy2xywh(x):
@@ -748,7 +494,6 @@ def segments2boxes(segments):
         boxes.append([x.min(), y.min(), x.max(), y.max()])  # cls, xyxy
     return xyxy2xywh(np.array(boxes))  # cls, xywh
 
-
 def resample_segments(segments, n=1000):
     # Up-sample an (n,2) segment
     for i, s in enumerate(segments):
@@ -757,7 +502,6 @@ def resample_segments(segments, n=1000):
         xp = np.arange(len(s))
         segments[i] = np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2, -1).T  # segment xy
     return segments
-
 
 def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     # Rescale coords (xyxy) from img1_shape to img0_shape
@@ -903,81 +647,6 @@ def strip_optimizer(f='best.pt', s=''):  # from utils.general import *; strip_op
     torch.save(x, s or f)
     mb = os.path.getsize(s or f) / 1E6  # filesize
     LOGGER.info(f"Optimizer stripped from {f},{f' saved as {s},' if s else ''} {mb:.1f}MB")
-
-
-def print_mutation(results, hyp, save_dir, bucket, prefix=colorstr('evolve: ')):
-    evolve_csv = save_dir / 'evolve.csv'
-    evolve_yaml = save_dir / 'hyp_evolve.yaml'
-    keys = ('metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/mAP_0.5:0.95', 'val/box_loss',
-            'val/obj_loss', 'val/cls_loss') + tuple(hyp.keys())  # [results + hyps]
-    keys = tuple(x.strip() for x in keys)
-    vals = results + tuple(hyp.values())
-    n = len(keys)
-
-    # Download (optional)
-    if bucket:
-        url = f'gs://{bucket}/evolve.csv'
-        if gsutil_getsize(url) > (evolve_csv.stat().st_size if evolve_csv.exists() else 0):
-            os.system(f'gsutil cp {url} {save_dir}')  # download evolve.csv if larger than local
-
-    # Log to evolve.csv
-    s = '' if evolve_csv.exists() else (('%20s,' * n % keys).rstrip(',') + '\n')  # add header
-    with open(evolve_csv, 'a') as f:
-        f.write(s + ('%20.5g,' * n % vals).rstrip(',') + '\n')
-
-    # Save yaml
-    with open(evolve_yaml, 'w') as f:
-        data = pd.read_csv(evolve_csv)
-        data = data.rename(columns=lambda x: x.strip())  # strip keys
-        i = np.argmax(fitness(data.values[:, :4]))  #
-        generations = len(data)
-        f.write('# YOLOv5 Hyperparameter Evolution Results\n' + f'# Best generation: {i}\n' +
-                f'# Last generation: {generations - 1}\n' + '# ' + ', '.join(f'{x.strip():>20s}' for x in keys[:7]) +
-                '\n' + '# ' + ', '.join(f'{x:>20.5g}' for x in data.values[i, :7]) + '\n\n')
-        yaml.safe_dump(data.loc[i][7:].to_dict(), f, sort_keys=False)
-
-    # Print to screen
-    LOGGER.info(prefix + f'{generations} generations finished, current result:\n' + prefix +
-                ', '.join(f'{x.strip():>20s}' for x in keys) + '\n' + prefix + ', '.join(f'{x:20.5g}'
-                                                                                         for x in vals) + '\n\n')
-
-    if bucket:
-        os.system(f'gsutil cp {evolve_csv} {evolve_yaml} gs://{bucket}')  # upload
-
-
-def apply_classifier(x, model, img, im0):
-    # Apply a second stage classifier to YOLO outputs
-    # Example model = torchvision.models.__dict__['efficientnet_b0'](pretrained=True).to(device).eval()
-    im0 = [im0] if isinstance(im0, np.ndarray) else im0
-    for i, d in enumerate(x):  # per image
-        if d is not None and len(d):
-            d = d.clone()
-
-            # Reshape and pad cutouts
-            b = xyxy2xywh(d[:, :4])  # boxes
-            b[:, 2:] = b[:, 2:].max(1)[0].unsqueeze(1)  # rectangle to square
-            b[:, 2:] = b[:, 2:] * 1.3 + 30  # pad
-            d[:, :4] = xywh2xyxy(b).long()
-
-            # Rescale boxes from img_size to im0 size
-            scale_coords(img.shape[2:], d[:, :4], im0[i].shape)
-
-            # Classes
-            pred_cls1 = d[:, 5].long()
-            ims = []
-            for a in d:
-                cutout = im0[i][int(a[1]):int(a[3]), int(a[0]):int(a[2])]
-                im = cv2.resize(cutout, (224, 224))  # BGR
-
-                im = im[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
-                im = np.ascontiguousarray(im, dtype=np.float32)  # uint8 to float32
-                im /= 255  # 0 - 255 to 0.0 - 1.0
-                ims.append(im)
-
-            pred_cls2 = model(torch.Tensor(ims).to(d.device)).argmax(1)  # classifier prediction
-            x[i] = x[i][pred_cls1 == pred_cls2]  # retain matching class detections
-
-    return x
 
 
 def increment_path(path, exist_ok=False, sep='', mkdir=False):

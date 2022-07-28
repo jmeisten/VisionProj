@@ -16,7 +16,7 @@ from utils.plots import Annotator, colors
 ROOTDIR=Path(__file__).resolve().parents[0]
 
 yamlFilePath="./medToxDataSet/medToxData.yaml"
-tfLitePath="./medToxDataSet/last-fp16.tflite"
+tfLitePath="./models/medtox_model.tflite"
 saveDir = "./medToxDataSet/output/"
 DISPLAY_WINDOW_NAME="Inference output"
 
@@ -36,18 +36,20 @@ device = "cpu"
 model = DetectMultiBackend(tfLitePath, device=device, dnn=False, data=yamlFilePath, fp16=False)
 stride, names, pt = model.stride, model.names, model.pt
 dataset = []
+cap = None
+
 if args.source =="cam":
-    # Use webcam    
-    print(dataset)
-else:
-    print()
+    cap = cv2.VideoCapture(0)
+    
 
 while done == False:
     img = None
     path = None
     if args.source == "cam":
         cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(0, img_size=640, stride=stride, auto=pt)
+        _, img = cap.read()
+        cv2.imwrite("./stream/image.jpg", img)
+        dataset = LoadImages("./stream/", img_size=640, stride=stride, auto=pt)
     else:
         dataset = LoadImages(args.source, img_size=640, stride=stride, auto=pt)
     for path, im, im0s, vid_cap, s in dataset:
@@ -71,13 +73,19 @@ while done == False:
             
             p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
 
+            bcCt = 0
+            lineCt = 0
+            stripCt = 0            
+            smudgeCt = 0
+            ctArray = [bcCt,lineCt,stripCt,smudgeCt]
+            
             p = Path(p)  # to Path
             save_path = str(saveDir + p.name)  # im.jpg
             txt_path = str(saveDir + 'labels' + "/" + p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
             s += '%gx%g ' % im.shape[2:]  # print string
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if False else im0  # for save_crop
-            annotator = Annotator(im0, line_width=3, example=str(names))
+            annotator = Annotator(im0, line_width=2, example=str(names))
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
@@ -100,14 +108,32 @@ while done == False:
                         c = int(cls)  # integer class
                         label = None if False else (names[c] if False else f'{names[c]} {conf:.2f}')
                         annotator.box_label(xyxy, label, color=colors(c, True))
+                        if label.split(" ")[0] == "testLine":
+                            lineCt+=1
+
+                        if label.split(" ")[0] == "barcode":
+                            bcCt +=1
+                            
+                        if label.split(" ")[0] == "strip":
+                            stripCt +=1
                     
             # Stream results
             im0 = annotator.result()
-            print("Found {} objects and drew those bitches".format(len(annotator.getBoxLocationsDrawn())))
-            print(annotator.getBoxLocationsDrawn())
+            # print("Found {} objects and drew those bitches".format(len(annotator.getBoxLocationsDrawn())))
+            # print(annotator.getBoxLocationsDrawn())
             annotator.emptyBoxesDrawn()
+            im0 = cv2.putText(im0, 'Barcodes: {}'.format(bcCt), (10,15), 0, 
+                   1, colors(0,True), 1, cv2.LINE_AA)
+            im0 = cv2.putText(im0, 'Strips Seen: {}'.format(stripCt), (10,45), 0, 
+                   1, colors(1,True), 1, cv2.LINE_AA)
+            im0 = cv2.putText(im0, 'Test Lines Seen: {}'.format(lineCt), (10,75), 0, 
+                   1, colors(2,True), 1, cv2.LINE_AA)
+   
             cv2.imshow(DISPLAY_WINDOW_NAME, im0)
-            if(cv2.waitKey(0) == ord('q')):
+                
+            t = 1 if not type(cap) == None else 0
+                
+            if(cv2.waitKey(t) == ord('q')):
                 done = True
                 cv2.destroyAllWindows()
                 quit()
