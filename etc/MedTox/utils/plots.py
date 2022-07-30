@@ -75,7 +75,14 @@ class Annotator:
 
         return (p[0] > bl[0] and p[0] < tr[0] and p[1] > bl[1] and p[1] < tr[1] )
 
-    def box_label(self, box, label='', color=(128, 128, 128), txt_color=(255, 255, 255)):
+    def pointInbetweenPoints(self, p, p1, p2):
+        
+        tr = (p2[0] ,p2[1])
+        bl = (p1[0], p1[1])
+
+        return (p[0] > bl[0] and p[0] < tr[0] and p[1] > bl[1] and p[1] < tr[1] )
+
+    def box_label(self, box, label='', color=(128, 128, 128), txt_color=(255, 255, 255),drawBox=False):
         p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
         center = (p1[0] + (p2[0]-p1[0])/2, p1[1] + (p2[1]-p1[1])/2)
                             
